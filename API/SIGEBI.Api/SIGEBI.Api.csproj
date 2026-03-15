@@ -8,6 +8,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.13" />
+    <PackageReference Include="MongoDB.Driver" Version="3.7.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\SIGEBI.Domain\SIGEBI.Domain.csproj" />
+    <ProjectReference Include="..\..\Application\SIGEBI.Application\SIGEBI.Application.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\SIGEBI.Persistence\SIGEBI.Persistence.csproj" />
+    <ProjectReference Include="..\..\IOC\SIGEBI.IOC\SIGEBI.IOC.csproj" />
   </ItemGroup>
 
 </Project>
