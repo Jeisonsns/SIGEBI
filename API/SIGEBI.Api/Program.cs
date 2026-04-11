@@ -21,7 +21,7 @@ var mongoClient = new MongoClient(mongoSettings);
 var mongoDatabase = mongoClient.GetDatabase(databaseName);
 builder.Services.AddSingleton<IMongoDatabase>(mongoDatabase);
 
-// Dependencias SIGEBI
+// Dependencias SIGEBIs
 builder.Services.AddSIGEBIDependencies();
 
 // Controladores con soporte de enums como string
