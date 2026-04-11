@@ -24,7 +24,18 @@ builder.Services.AddSingleton<IMongoDatabase>(mongoDatabase);
 // Dependencias SIGEBI
 builder.Services.AddSIGEBIDependencies();
 
-// Controladores con soporte de enums como string
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SIGEBIPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+// Controladores
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -61,6 +72,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty;
 });
 
+app.UseCors("SIGEBIPolicy");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
