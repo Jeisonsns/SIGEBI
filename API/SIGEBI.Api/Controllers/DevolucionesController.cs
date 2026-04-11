@@ -6,6 +6,7 @@ namespace SIGEBI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class DevolucionesController : ControllerBase
 {
     private readonly IDevolucionService _devolucionService;
@@ -16,14 +17,14 @@ public class DevolucionesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var devoluciones = await _devolucionService.GetAllAsync();
-        return Ok(devoluciones);
-    }
+    [ProducesResponseType(typeof(IEnumerable<DevolucionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<DevolucionDto>>> GetAll()
+        => Ok(await _devolucionService.GetAllAsync());
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [ProducesResponseType(typeof(DevolucionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DevolucionDto>> GetById(string id)
     {
         var devolucion = await _devolucionService.GetByIdAsync(id);
         if (devolucion == null) return NotFound(new { message = "Devolución no encontrada." });
@@ -31,15 +32,19 @@ public class DevolucionesController : ControllerBase
     }
 
     [HttpPost("procesar/{prestamoId}")]
-    public async Task<IActionResult> Procesar(string prestamoId)
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Procesar(string prestamoId)
     {
         var result = await _devolucionService.ProcesarDevolucionAsync(prestamoId);
         if (!result.Success) return BadRequest(new { message = result.Message });
-        return Ok(new { message = result.Message });
+        return StatusCode(StatusCodes.Status201Created, new { message = result.Message });
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdateDevolucionDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Update([FromBody] UpdateDevolucionDto dto)
     {
         var result = await _devolucionService.UpdateAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -47,7 +52,9 @@ public class DevolucionesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Delete(string id)
     {
         var result = await _devolucionService.DeleteAsync(id);
         if (!result.Success) return BadRequest(new { message = result.Message });

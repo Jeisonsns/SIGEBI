@@ -9,92 +9,96 @@ namespace SIGEBI.Application.Services;
 public class RecursoService : IRecursoService
 {
     private readonly IRecursoRepository _recursoRepo;
-    private readonly IAuditoriaRepository _auditoriaRepo;
 
-    public RecursoService(IRecursoRepository recursoRepo, IAuditoriaRepository auditoriaRepo)
+    public RecursoService(IRecursoRepository recursoRepo)
     {
         _recursoRepo = recursoRepo;
-        _auditoriaRepo = auditoriaRepo;
     }
 
     public async Task<IEnumerable<RecursoDto>> GetAllAsync()
     {
         var recursos = await _recursoRepo.GetAllAsync();
-        return recursos.Select(r => new RecursoDto
-        {
-            Id = r.Id, Titulo = r.Titulo, Autor = r.Autor, Isbn = r.Isbn,
-            Categoria = r.Categoria, Editorial = r.Editorial,
-            Anio = r.Anio, NumEjemplares = r.NumEjemplares, Estado = r.Estado
-        });
+        return recursos.Select(ToDto);
     }
 
     public async Task<RecursoDto?> GetByIdAsync(string id)
     {
         var r = await _recursoRepo.GetByIdAsync(id);
-        if (r == null) return null;
-        return new RecursoDto
-        {
-            Id = r.Id, Titulo = r.Titulo, Autor = r.Autor, Isbn = r.Isbn,
-            Categoria = r.Categoria, Editorial = r.Editorial,
-            Anio = r.Anio, NumEjemplares = r.NumEjemplares, Estado = r.Estado
-        };
+        return r == null ? null : ToDto(r);
     }
 
     public async Task<IEnumerable<RecursoDto>> GetByEstadoAsync(EstadoRecurso estado)
     {
         var recursos = await _recursoRepo.GetByEstadoAsync(estado);
-        return recursos.Select(r => new RecursoDto
-        {
-            Id = r.Id, Titulo = r.Titulo, Autor = r.Autor, Isbn = r.Isbn,
-            Categoria = r.Categoria, Editorial = r.Editorial,
-            Anio = r.Anio, NumEjemplares = r.NumEjemplares, Estado = r.Estado
-        });
+        return recursos.Select(ToDto);
     }
 
     public async Task<OperationResult> SaveAsync(SaveRecursoDto dto)
     {
-        var recurso = new Recurso
+        try
         {
-            Id = Guid.NewGuid().ToString(),
-            Titulo = dto.Titulo, Autor = dto.Autor, Isbn = dto.Isbn,
-            Categoria = dto.Categoria, Editorial = dto.Editorial,
-            Anio = dto.Anio, NumEjemplares = dto.NumEjemplares,
-            Estado = EstadoRecurso.Disponible
-        };
-        await _recursoRepo.AddAsync(recurso);
-        return OperationResult.Ok("Recurso registrado correctamente.");
+            var recurso = Recurso.Crear(dto.Titulo, dto.Autor, dto.Isbn,
+                dto.Categoria, dto.Editorial, dto.Anio, dto.NumEjemplares);
+            await _recursoRepo.AddAsync(recurso);
+            return OperationResult.Ok("Recurso registrado correctamente.");
+        }
+        catch (ArgumentException ex) { return OperationResult.Fail(ex.Message); }
+        catch (Exception) { return OperationResult.Fail("Error inesperado al registrar el recurso."); }
     }
 
     public async Task<OperationResult> UpdateAsync(UpdateRecursoDto dto)
+{
+    try
     {
         var recurso = await _recursoRepo.GetByIdAsync(dto.Id);
         if (recurso == null) return OperationResult.Fail("Recurso no encontrado.");
-
-        recurso.Titulo = dto.Titulo; recurso.Autor = dto.Autor;
-        recurso.Isbn = dto.Isbn; recurso.Categoria = dto.Categoria;
-        recurso.Editorial = dto.Editorial; recurso.Anio = dto.Anio;
-        recurso.NumEjemplares = dto.NumEjemplares; recurso.Estado = dto.Estado;
-
+        recurso.Actualizar(dto.Titulo, dto.Autor, dto.Isbn,
+            dto.Categoria, dto.Editorial, dto.Anio, dto.NumEjemplares);
         await _recursoRepo.UpdateAsync(recurso);
         return OperationResult.Ok("Recurso actualizado correctamente.");
     }
+    catch (ArgumentException ex) { return OperationResult.Fail(ex.Message); }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al actualizar el recurso."); }
+}
 
-    public async Task<OperationResult> CambiarEstadoAsync(string id, EstadoRecurso estado)
+public async Task<OperationResult> CambiarEstadoAsync(string id, EstadoRecurso estado)
+{
+    try
     {
         var recurso = await _recursoRepo.GetByIdAsync(id);
         if (recurso == null) return OperationResult.Fail("Recurso no encontrado.");
-        recurso.Estado = estado;
+        recurso.CambiarEstado(estado);
         await _recursoRepo.UpdateAsync(recurso);
         return OperationResult.Ok("Estado actualizado.");
     }
+    catch (InvalidOperationException ex) { return OperationResult.Fail(ex.Message); }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al cambiar el estado."); }
+}
 
-    public async Task<OperationResult> DeleteAsync(string id)
+public async Task<OperationResult> DeleteAsync(string id)
+{
+    try
     {
         var recurso = await _recursoRepo.GetByIdAsync(id);
         if (recurso == null) return OperationResult.Fail("Recurso no encontrado.");
-        if (recurso.Estado == EstadoRecurso.Prestado)
-            return OperationResult.Fail("No se puede eliminar un recurso con préstamo activo.");
+        if (!recurso.EstaDisponible())
+            return OperationResult.Fail("No se puede eliminar un recurso que no está disponible.");
         await _recursoRepo.DeleteAsync(id);
         return OperationResult.Ok("Recurso eliminado.");
     }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al eliminar el recurso."); }
+}
+
+private static RecursoDto ToDto(Recurso r) => new()
+{
+    Id = r.Id,
+    Titulo = r.Titulo,
+    Autor = r.Autor,
+    Isbn = r.Isbn,
+    Categoria = r.Categoria,
+    Editorial = r.Editorial,
+    Anio = r.Anio,
+    NumEjemplares = r.NumEjemplares,
+    Estado = r.Estado
+};
 }

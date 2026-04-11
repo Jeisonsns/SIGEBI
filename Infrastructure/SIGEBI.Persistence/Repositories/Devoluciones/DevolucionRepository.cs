@@ -10,5 +10,14 @@ public class DevolucionRepository : BaseRepository<Devolucion>, IDevolucionRepos
     public DevolucionRepository(IMongoDatabase database) : base(database, "devoluciones") { }
 
     public async Task<Devolucion?> GetByPrestamoAsync(string prestamoId)
-        => await _collection.Find(d => d.PrestamoId == prestamoId).FirstOrDefaultAsync();
+    {
+        try
+        {
+            return await _collection.Find(d => d.PrestamoId == prestamoId).FirstOrDefaultAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new RepositoryException("Error al buscar devolución por préstamo.", ex);
+        }
+    }
 }

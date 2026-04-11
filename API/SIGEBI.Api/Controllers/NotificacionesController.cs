@@ -6,6 +6,7 @@ namespace SIGEBI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class NotificacionesController : ControllerBase
 {
     private readonly INotificacionService _notificacionService;
@@ -16,14 +17,14 @@ public class NotificacionesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var notificaciones = await _notificacionService.GetAllAsync();
-        return Ok(notificaciones);
-    }
+    [ProducesResponseType(typeof(IEnumerable<NotificacionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<NotificacionDto>>> GetAll()
+        => Ok(await _notificacionService.GetAllAsync());
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [ProducesResponseType(typeof(NotificacionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<NotificacionDto>> GetById(string id)
     {
         var notificacion = await _notificacionService.GetByIdAsync(id);
         if (notificacion == null) return NotFound(new { message = "Notificación no encontrada." });
@@ -31,36 +32,40 @@ public class NotificacionesController : ControllerBase
     }
 
     [HttpGet("usuario/{usuarioId}")]
-    public async Task<IActionResult> GetByUsuario(string usuarioId)
-    {
-        var notificaciones = await _notificacionService.GetByUsuarioAsync(usuarioId);
-        return Ok(notificaciones);
-    }
+    [ProducesResponseType(typeof(IEnumerable<NotificacionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<NotificacionDto>>> GetByUsuario(string usuarioId)
+        => Ok(await _notificacionService.GetByUsuarioAsync(usuarioId));
 
     [HttpPost("enviar")]
-    public async Task<IActionResult> Enviar([FromBody] SaveNotificacionDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Enviar([FromBody] SaveNotificacionDto dto)
     {
         var result = await _notificacionService.EnviarAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
-        return Ok(new { message = result.Message });
+        return StatusCode(StatusCodes.Status201Created, new { message = result.Message });
     }
 
     [HttpPost("vencimientos-proximos")]
-    public async Task<IActionResult> NotificarVencimientosProximos()
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult> NotificarVencimientosProximos()
     {
         await _notificacionService.NotificarVencimientosProximosAsync();
         return Ok(new { message = "Notificaciones de vencimientos próximos enviadas." });
     }
 
     [HttpPost("prestamos-vencidos")]
-    public async Task<IActionResult> NotificarPrestamosVencidos()
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult> NotificarPrestamosVencidos()
     {
         await _notificacionService.NotificarPrestamosVencidosAsync();
         return Ok(new { message = "Notificaciones de préstamos vencidos enviadas." });
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdateNotificacionDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Update([FromBody] UpdateNotificacionDto dto)
     {
         var result = await _notificacionService.UpdateAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -68,7 +73,9 @@ public class NotificacionesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Delete(string id)
     {
         var result = await _notificacionService.DeleteAsync(id);
         if (!result.Success) return BadRequest(new { message = result.Message });

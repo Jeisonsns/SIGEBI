@@ -10,5 +10,14 @@ public class NotificacionRepository : BaseRepository<Notificacion>, INotificacio
     public NotificacionRepository(IMongoDatabase database) : base(database, "notificaciones") { }
 
     public async Task<IEnumerable<Notificacion>> GetByUsuarioAsync(string usuarioId)
-        => await _collection.Find(n => n.UsuarioId == usuarioId).ToListAsync();
+    {
+        try
+        {
+            return await _collection.Find(n => n.UsuarioId == usuarioId).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new RepositoryException("Error al obtener notificaciones del usuario.", ex);
+        }
+    }
 }

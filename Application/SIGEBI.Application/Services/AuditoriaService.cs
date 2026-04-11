@@ -16,10 +16,7 @@ public class AuditoriaService : IAuditoriaService
     }
 
     public async Task<IEnumerable<AuditoriaDto>> GetAllAsync()
-    {
-        var registros = await _auditoriaRepo.GetAllAsync();
-        return registros.Select(a => ToDto(a));
-    }
+        => (await _auditoriaRepo.GetAllAsync()).Select(ToDto);
 
     public async Task<AuditoriaDto?> GetByIdAsync(string id)
     {
@@ -28,57 +25,65 @@ public class AuditoriaService : IAuditoriaService
     }
 
     public async Task<IEnumerable<AuditoriaDto>> GetByFechaAsync(DateTime desde, DateTime hasta)
-    {
-        var registros = await _auditoriaRepo.GetByFechaAsync(desde, hasta);
-        return registros.Select(a => ToDto(a));
-    }
+        => (await _auditoriaRepo.GetByFechaAsync(desde, hasta)).Select(ToDto);
 
     public async Task<IEnumerable<AuditoriaDto>> GetByUsuarioAsync(string usuario)
-    {
-        var registros = await _auditoriaRepo.GetByUsuarioAsync(usuario);
-        return registros.Select(a => ToDto(a));
-    }
+        => (await _auditoriaRepo.GetByUsuarioAsync(usuario)).Select(ToDto);
 
-    public async Task RegistrarAsync(string operacion, string usuario, string entidad, string recursoId, string detalles, string resultado)
+    public async Task RegistrarAsync(string operacion, string usuario, string entidad,
+        string recursoId, string detalles, string resultado)
     {
-        var auditoria = new AuditoriaEntity
+        try
         {
-            Id = Guid.NewGuid().ToString(),
-            Operacion = operacion, Usuario = usuario,
-            Entidad = entidad, RecursoId = recursoId,
-            Fecha = DateTime.UtcNow, Detalles = detalles,
-            Resultado = resultado
-        };
-        await _auditoriaRepo.AddAsync(auditoria);
+            var auditoria = AuditoriaEntity.Registrar(operacion, usuario, entidad, recursoId, detalles, resultado);
+            await _auditoriaRepo.AddAsync(auditoria);
+        }
+        catch { }
     }
 
     public async Task<OperationResult> SaveAsync(SaveAuditoriaDto dto)
     {
-        await RegistrarAsync(dto.Operacion, dto.Usuario, dto.Entidad, dto.RecursoId, dto.Detalles, dto.Resultado);
-        return OperationResult.Ok("Registro de auditoría guardado.");
+        try
+        {
+            await RegistrarAsync(dto.Operacion, dto.Usuario, dto.Entidad, dto.RecursoId, dto.Detalles, dto.Resultado);
+            return OperationResult.Ok("Registro de auditoría guardado.");
+        }
+        catch (Exception) { return OperationResult.Fail("Error inesperado al guardar el registro."); }
     }
 
     public async Task<OperationResult> UpdateAsync(UpdateAuditoriaDto dto)
     {
-        var a = await _auditoriaRepo.GetByIdAsync(dto.Id);
-        if (a == null) return OperationResult.Fail("Registro no encontrado.");
-        a.Resultado = dto.Resultado;
-        await _auditoriaRepo.UpdateAsync(a);
-        return OperationResult.Ok("Registro actualizado.");
+        try
+        {
+            var a = await _auditoriaRepo.GetByIdAsync(dto.Id);
+            if (a == null) return OperationResult.Fail("Registro no encontrado.");
+            await _auditoriaRepo.UpdateAsync(a);
+            return OperationResult.Ok("Registro actualizado.");
+        }
+        catch (Exception) { return OperationResult.Fail("Error inesperado al actualizar el registro."); }
     }
 
     public async Task<OperationResult> DeleteAsync(string id)
     {
-        var a = await _auditoriaRepo.GetByIdAsync(id);
-        if (a == null) return OperationResult.Fail("Registro no encontrado.");
-        await _auditoriaRepo.DeleteAsync(id);
-        return OperationResult.Ok("Registro eliminado.");
+        try
+        {
+            var a = await _auditoriaRepo.GetByIdAsync(id);
+            if (a == null) return OperationResult.Fail("Registro no encontrado.");
+            await _auditoriaRepo.DeleteAsync(id);
+            return OperationResult.Ok("Registro eliminado.");
+        }
+        catch (Exception) { return OperationResult.Fail("Error inesperado al eliminar el registro."); }
     }
 
     private static AuditoriaDto ToDto(AuditoriaEntity a) => new()
     {
-        Id = a.Id, Operacion = a.Operacion, Usuario = a.Usuario,
-        Entidad = a.Entidad, RecursoId = a.RecursoId,
-        Fecha = a.Fecha, Detalles = a.Detalles, Resultado = a.Resultado
+        Id = a.Id,
+        Operacion = a.Operacion,
+        Usuario = a.Usuario,
+        Entidad = a.Entidad,
+        RecursoId = a.RecursoId,
+        Fecha = a.Fecha,
+        Detalles = a.Detalles,
+        Resultado = a.Resultado
     };
 }

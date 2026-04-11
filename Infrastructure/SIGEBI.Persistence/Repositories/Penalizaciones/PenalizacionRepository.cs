@@ -10,5 +10,19 @@ public class PenalizacionRepository : BaseRepository<Penalizacion>, IPenalizacio
     public PenalizacionRepository(IMongoDatabase database) : base(database, "penalizaciones") { }
 
     public async Task<IEnumerable<Penalizacion>> GetActivasByUsuarioAsync(string usuarioId)
-        => await _collection.Find(p => p.UsuarioId == usuarioId && p.Estado == EstadoPenalizacion.Activa).ToListAsync();
+    {
+        try
+        {
+            var ahora = DateTime.UtcNow;
+            return await _collection
+                .Find(p => p.UsuarioId == usuarioId &&
+                           p.Estado == EstadoPenalizacion.Activa &&
+                           p.FechaFin > ahora)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new RepositoryException("Error al obtener penalizaciones activas del usuario.", ex);
+        }
+    }
 }

@@ -7,6 +7,7 @@ namespace SIGEBI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class UsuariosController : ControllerBase
 {
     private readonly IUsuarioService _usuarioService;
@@ -17,14 +18,14 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var usuarios = await _usuarioService.GetAllAsync();
-        return Ok(usuarios);
-    }
+    [ProducesResponseType(typeof(IEnumerable<UsuarioDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<UsuarioDto>>> GetAll()
+        => Ok(await _usuarioService.GetAllAsync());
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [ProducesResponseType(typeof(UsuarioDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UsuarioDto>> GetById(string id)
     {
         var usuario = await _usuarioService.GetByIdAsync(id);
         if (usuario == null) return NotFound(new { message = "Usuario no encontrado." });
@@ -32,7 +33,9 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpGet("codigo/{codigo}")]
-    public async Task<IActionResult> GetByCodigo(string codigo)
+    [ProducesResponseType(typeof(UsuarioDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UsuarioDto>> GetByCodigo(string codigo)
     {
         var usuario = await _usuarioService.GetByCodigoAsync(codigo);
         if (usuario == null) return NotFound(new { message = "Usuario no encontrado." });
@@ -40,22 +43,27 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpGet("{id}/acceso")]
-    public async Task<IActionResult> VerificarAcceso(string id)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult> VerificarAcceso(string id)
     {
         var tieneAcceso = await _usuarioService.TieneCondicionesDeAccesoAsync(id);
         return Ok(new { tieneAcceso });
     }
 
     [HttpPost]
-    public async Task<IActionResult> Save([FromBody] SaveUsuarioDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Save([FromBody] SaveUsuarioDto dto)
     {
         var result = await _usuarioService.SaveAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
-        return Ok(new { message = result.Message });
+        return StatusCode(StatusCodes.Status201Created, new { message = result.Message });
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdateUsuarioDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Update([FromBody] UpdateUsuarioDto dto)
     {
         var result = await _usuarioService.UpdateAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -63,7 +71,9 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPatch("{id}/estado")]
-    public async Task<IActionResult> CambiarEstado(string id, [FromBody] EstadoUsuario estado)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> CambiarEstado(string id, [FromBody] EstadoUsuario estado)
     {
         var result = await _usuarioService.CambiarEstadoAsync(id, estado);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -71,7 +81,9 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Delete(string id)
     {
         var result = await _usuarioService.DeleteAsync(id);
         if (!result.Success) return BadRequest(new { message = result.Message });

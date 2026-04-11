@@ -6,6 +6,7 @@ namespace SIGEBI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class PrestamosController : ControllerBase
 {
     private readonly IPrestamoService _prestamoService;
@@ -16,14 +17,14 @@ public class PrestamosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var prestamos = await _prestamoService.GetAllAsync();
-        return Ok(prestamos);
-    }
+    [ProducesResponseType(typeof(IEnumerable<PrestamoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PrestamoDto>>> GetAll()
+        => Ok(await _prestamoService.GetAllAsync());
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [ProducesResponseType(typeof(PrestamoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PrestamoDto>> GetById(string id)
     {
         var prestamo = await _prestamoService.GetByIdAsync(id);
         if (prestamo == null) return NotFound(new { message = "Préstamo no encontrado." });
@@ -31,29 +32,29 @@ public class PrestamosController : ControllerBase
     }
 
     [HttpGet("activos/{usuarioId}")]
-    public async Task<IActionResult> GetActivosByUsuario(string usuarioId)
-    {
-        var prestamos = await _prestamoService.GetActivosByUsuarioAsync(usuarioId);
-        return Ok(prestamos);
-    }
+    [ProducesResponseType(typeof(IEnumerable<PrestamoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PrestamoDto>>> GetActivosByUsuario(string usuarioId)
+        => Ok(await _prestamoService.GetActivosByUsuarioAsync(usuarioId));
 
     [HttpGet("vencidos")]
-    public async Task<IActionResult> GetVencidos()
-    {
-        var prestamos = await _prestamoService.GetVencidosAsync();
-        return Ok(prestamos);
-    }
+    [ProducesResponseType(typeof(IEnumerable<PrestamoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PrestamoDto>>> GetVencidos()
+        => Ok(await _prestamoService.GetVencidosAsync());
 
     [HttpPost]
-    public async Task<IActionResult> Save([FromBody] SavePrestamoDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Save([FromBody] SavePrestamoDto dto)
     {
         var result = await _prestamoService.SaveAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
-        return Ok(new { message = result.Message });
+        return StatusCode(StatusCodes.Status201Created, new { message = result.Message });
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdatePrestamoDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Update([FromBody] UpdatePrestamoDto dto)
     {
         var result = await _prestamoService.UpdateAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -61,7 +62,9 @@ public class PrestamosController : ControllerBase
     }
 
     [HttpPatch("{id}/renovar")]
-    public async Task<IActionResult> Renovar(string id)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Renovar(string id)
     {
         var result = await _prestamoService.RenovarAsync(id);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -69,7 +72,9 @@ public class PrestamosController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Delete(string id)
     {
         var result = await _prestamoService.DeleteAsync(id);
         if (!result.Success) return BadRequest(new { message = result.Message });
