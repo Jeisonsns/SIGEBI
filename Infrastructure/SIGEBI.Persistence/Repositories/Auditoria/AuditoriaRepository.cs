@@ -10,8 +10,28 @@ public class AuditoriaRepository : BaseRepository<AuditoriaEntity>, IAuditoriaRe
     public AuditoriaRepository(IMongoDatabase database) : base(database, "auditoria") { }
 
     public async Task<IEnumerable<AuditoriaEntity>> GetByFechaAsync(DateTime desde, DateTime hasta)
-        => await _collection.Find(a => a.Fecha >= desde && a.Fecha <= hasta).ToListAsync();
+    {
+        try
+        {
+            return await _collection
+                .Find(a => a.Fecha >= desde && a.Fecha <= hasta)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new RepositoryException("Error al filtrar auditoría por fecha.", ex);
+        }
+    }
 
     public async Task<IEnumerable<AuditoriaEntity>> GetByUsuarioAsync(string usuario)
-        => await _collection.Find(a => a.Usuario == usuario).ToListAsync();
+    {
+        try
+        {
+            return await _collection.Find(a => a.Usuario == usuario).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new RepositoryException("Error al filtrar auditoría por usuario.", ex);
+        }
+    }
 }

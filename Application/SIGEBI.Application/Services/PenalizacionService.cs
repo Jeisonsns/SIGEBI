@@ -16,10 +16,7 @@ public class PenalizacionService : IPenalizacionService
     }
 
     public async Task<IEnumerable<PenalizacionDto>> GetAllAsync()
-    {
-        var penalizaciones = await _penalizacionRepo.GetAllAsync();
-        return penalizaciones.Select(p => ToDto(p));
-    }
+        => (await _penalizacionRepo.GetAllAsync()).Select(ToDto);
 
     public async Task<PenalizacionDto?> GetByIdAsync(string id)
     {
@@ -28,64 +25,76 @@ public class PenalizacionService : IPenalizacionService
     }
 
     public async Task<IEnumerable<PenalizacionDto>> GetActivasByUsuarioAsync(string usuarioId)
-    {
-        var penalizaciones = await _penalizacionRepo.GetActivasByUsuarioAsync(usuarioId);
-        return penalizaciones.Select(p => ToDto(p));
-    }
+        => (await _penalizacionRepo.GetActivasByUsuarioAsync(usuarioId)).Select(ToDto);
 
     public async Task<OperationResult> SaveAsync(SavePenalizacionDto dto)
     {
-        var penalizacion = new Penalizacion
+        try
         {
-            Id = Guid.NewGuid().ToString(),
-            UsuarioId = dto.UsuarioId, Causa = dto.Causa,
-            Tipo = dto.Tipo, Estado = EstadoPenalizacion.Activa,
-            FechaInicio = DateTime.UtcNow, FechaFin = dto.FechaFin
-        };
-        await _penalizacionRepo.AddAsync(penalizacion);
-        return OperationResult.Ok("Penalización aplicada.");
+            var penalizacion = Penalizacion.Crear(dto.UsuarioId, dto.Causa, dto.Tipo, dto.FechaFin);
+            await _penalizacionRepo.AddAsync(penalizacion);
+            return OperationResult.Ok("Penalización aplicada.");
+        }
+        catch (ArgumentException ex) { return OperationResult.Fail(ex.Message); }
+        catch (Exception) { return OperationResult.Fail("Error inesperado al aplicar la penalización."); }
     }
 
     public async Task<OperationResult> UpdateAsync(UpdatePenalizacionDto dto)
+{
+    try
     {
         var penalizacion = await _penalizacionRepo.GetByIdAsync(dto.Id);
         if (penalizacion == null) return OperationResult.Fail("Penalización no encontrada.");
-        penalizacion.Estado = dto.Estado;
         await _penalizacionRepo.UpdateAsync(penalizacion);
         return OperationResult.Ok("Penalización actualizada.");
     }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al actualizar la penalización."); }
+}
 
-    public async Task<OperationResult> ResolverAsync(string penalizacionId)
+public async Task<OperationResult> ResolverAsync(string penalizacionId)
+{
+    try
     {
         var penalizacion = await _penalizacionRepo.GetByIdAsync(penalizacionId);
         if (penalizacion == null) return OperationResult.Fail("Penalización no encontrada.");
-        penalizacion.Estado = EstadoPenalizacion.Resuelta;
+        penalizacion.Resolver();
         await _penalizacionRepo.UpdateAsync(penalizacion);
         return OperationResult.Ok("Penalización resuelta.");
     }
+    catch (InvalidOperationException ex) { return OperationResult.Fail(ex.Message); }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al resolver la penalización."); }
+}
 
-    public async Task FinalizarVencidasAsync()
+public async Task FinalizarVencidasAsync()
+{
+    var todas = await _penalizacionRepo.GetAllAsync();
+    foreach (var p in todas.Where(p => p.EstaActiva() && p.FechaFin <= DateTime.UtcNow))
     {
-        var todas = await _penalizacionRepo.GetAllAsync();
-        foreach (var p in todas.Where(p => p.Estado == EstadoPenalizacion.Activa && p.FechaFin <= DateTime.UtcNow))
-        {
-            p.Estado = EstadoPenalizacion.Resuelta;
-            await _penalizacionRepo.UpdateAsync(p);
-        }
+        p.Resolver();
+        await _penalizacionRepo.UpdateAsync(p);
     }
+}
 
-    public async Task<OperationResult> DeleteAsync(string id)
+public async Task<OperationResult> DeleteAsync(string id)
+{
+    try
     {
         var penalizacion = await _penalizacionRepo.GetByIdAsync(id);
         if (penalizacion == null) return OperationResult.Fail("Penalización no encontrada.");
         await _penalizacionRepo.DeleteAsync(id);
         return OperationResult.Ok("Penalización eliminada.");
     }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al eliminar la penalización."); }
+}
 
-    private static PenalizacionDto ToDto(Penalizacion p) => new()
-    {
-        Id = p.Id, UsuarioId = p.UsuarioId, Causa = p.Causa,
-        Tipo = p.Tipo, Estado = p.Estado,
-        FechaInicio = p.FechaInicio, FechaFin = p.FechaFin
-    };
+private static PenalizacionDto ToDto(Penalizacion p) => new()
+{
+    Id = p.Id,
+    UsuarioId = p.UsuarioId,
+    Causa = p.Causa,
+    Tipo = p.Tipo,
+    Estado = p.Estado,
+    FechaInicio = p.FechaInicio,
+    FechaFin = p.FechaFin
+};
 }

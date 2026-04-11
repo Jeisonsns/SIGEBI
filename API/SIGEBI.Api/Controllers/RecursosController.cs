@@ -7,6 +7,7 @@ namespace SIGEBI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class RecursosController : ControllerBase
 {
     private readonly IRecursoService _recursoService;
@@ -17,14 +18,17 @@ public class RecursosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [ProducesResponseType(typeof(IEnumerable<RecursoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<RecursoDto>>> GetAll()
     {
         var recursos = await _recursoService.GetAllAsync();
         return Ok(recursos);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
+    [ProducesResponseType(typeof(RecursoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RecursoDto>> GetById(string id)
     {
         var recurso = await _recursoService.GetByIdAsync(id);
         if (recurso == null) return NotFound(new { message = "Recurso no encontrado." });
@@ -32,22 +36,27 @@ public class RecursosController : ControllerBase
     }
 
     [HttpGet("estado/{estado}")]
-    public async Task<IActionResult> GetByEstado(EstadoRecurso estado)
+    [ProducesResponseType(typeof(IEnumerable<RecursoDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<RecursoDto>>> GetByEstado(EstadoRecurso estado)
     {
         var recursos = await _recursoService.GetByEstadoAsync(estado);
         return Ok(recursos);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Save([FromBody] SaveRecursoDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Save([FromBody] SaveRecursoDto dto)
     {
         var result = await _recursoService.SaveAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
-        return Ok(new { message = result.Message });
+        return StatusCode(StatusCodes.Status201Created, new { message = result.Message });
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdateRecursoDto dto)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Update([FromBody] UpdateRecursoDto dto)
     {
         var result = await _recursoService.UpdateAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -55,7 +64,9 @@ public class RecursosController : ControllerBase
     }
 
     [HttpPatch("{id}/estado")]
-    public async Task<IActionResult> CambiarEstado(string id, [FromBody] EstadoRecurso estado)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> CambiarEstado(string id, [FromBody] EstadoRecurso estado)
     {
         var result = await _recursoService.CambiarEstadoAsync(id, estado);
         if (!result.Success) return BadRequest(new { message = result.Message });
@@ -63,7 +74,9 @@ public class RecursosController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Delete(string id)
     {
         var result = await _recursoService.DeleteAsync(id);
         if (!result.Success) return BadRequest(new { message = result.Message });

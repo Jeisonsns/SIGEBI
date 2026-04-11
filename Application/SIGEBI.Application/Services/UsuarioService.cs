@@ -12,7 +12,8 @@ public class UsuarioService : IUsuarioService
     private readonly IPrestamoRepository _prestamoRepo;
     private readonly IPenalizacionRepository _penalizacionRepo;
 
-    public UsuarioService(IUsuarioRepository usuarioRepo, IPrestamoRepository prestamoRepo, IPenalizacionRepository penalizacionRepo)
+    public UsuarioService(IUsuarioRepository usuarioRepo, IPrestamoRepository prestamoRepo,
+        IPenalizacionRepository penalizacionRepo)
     {
         _usuarioRepo = usuarioRepo;
         _prestamoRepo = prestamoRepo;
@@ -22,7 +23,7 @@ public class UsuarioService : IUsuarioService
     public async Task<IEnumerable<UsuarioDto>> GetAllAsync()
     {
         var usuarios = await _usuarioRepo.GetAllAsync();
-        return usuarios.Select(u => ToDto(u));
+        return usuarios.Select(ToDto);
     }
 
     public async Task<UsuarioDto?> GetByIdAsync(string id)
@@ -39,64 +40,79 @@ public class UsuarioService : IUsuarioService
 
     public async Task<bool> TieneCondicionesDeAccesoAsync(string usuarioId)
     {
-        var usuario = await _usuarioRepo.GetByIdAsync(usuarioId);
-        if (usuario == null || usuario.Estado == EstadoUsuario.Inactivo) return false;
-
-        var prestamosVencidos = await _prestamoRepo.GetVencidosAsync();
-        if (prestamosVencidos.Any(p => p.UsuarioId == usuarioId)) return false;
-
-        var penalizaciones = await _penalizacionRepo.GetActivasByUsuarioAsync(usuarioId);
-        if (penalizaciones.Any()) return false;
-
-        return true;
+        try
+        {
+            var usuario = await _usuarioRepo.GetByIdAsync(usuarioId);
+            if (usuario == null || !usuario.EstaActivo()) return false;
+            var penalizaciones = await _penalizacionRepo.GetActivasByUsuarioAsync(usuarioId);
+            if (penalizaciones.Any()) return false;
+            var vencidos = await _prestamoRepo.GetVencidosAsync();
+            if (vencidos.Any(p => p.UsuarioId == usuarioId)) return false;
+            return true;
+        }
+        catch { return false; }
     }
 
     public async Task<OperationResult> SaveAsync(SaveUsuarioDto dto)
     {
-        var usuario = new Usuario
+        try
         {
-            Id = Guid.NewGuid().ToString(),
-            Codigo = dto.Codigo, Nombre = dto.Nombre,
-            Email = dto.Email, Tipo = dto.Tipo,
-            Estado = EstadoUsuario.Activo,
-            FechaRegistro = DateTime.UtcNow
-        };
-        await _usuarioRepo.AddAsync(usuario);
-        return OperationResult.Ok("Usuario registrado correctamente.");
+            var usuario = Usuario.Crear(dto.Codigo, dto.Nombre, dto.Email, dto.Tipo);
+            await _usuarioRepo.AddAsync(usuario);
+            return OperationResult.Ok("Usuario registrado correctamente.");
+        }
+        catch (ArgumentException ex) { return OperationResult.Fail(ex.Message); }
+        catch (Exception) { return OperationResult.Fail("Error inesperado al registrar el usuario."); }
     }
 
     public async Task<OperationResult> UpdateAsync(UpdateUsuarioDto dto)
+{
+    try
     {
         var usuario = await _usuarioRepo.GetByIdAsync(dto.Id);
         if (usuario == null) return OperationResult.Fail("Usuario no encontrado.");
-        usuario.Nombre = dto.Nombre;
-        usuario.Email = dto.Email;
-        usuario.Estado = dto.Estado;
+        usuario.Actualizar(dto.Nombre, dto.Email);
         await _usuarioRepo.UpdateAsync(usuario);
         return OperationResult.Ok("Usuario actualizado.");
     }
+    catch (ArgumentException ex) { return OperationResult.Fail(ex.Message); }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al actualizar el usuario."); }
+}
 
-    public async Task<OperationResult> CambiarEstadoAsync(string id, EstadoUsuario estado)
+public async Task<OperationResult> CambiarEstadoAsync(string id, EstadoUsuario estado)
+{
+    try
     {
         var usuario = await _usuarioRepo.GetByIdAsync(id);
         if (usuario == null) return OperationResult.Fail("Usuario no encontrado.");
-        usuario.Estado = estado;
+        if (estado == EstadoUsuario.Activo) usuario.Activar();
+        else usuario.Desactivar();
         await _usuarioRepo.UpdateAsync(usuario);
         return OperationResult.Ok("Estado actualizado.");
     }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al cambiar el estado."); }
+}
 
-    public async Task<OperationResult> DeleteAsync(string id)
+public async Task<OperationResult> DeleteAsync(string id)
+{
+    try
     {
         var usuario = await _usuarioRepo.GetByIdAsync(id);
         if (usuario == null) return OperationResult.Fail("Usuario no encontrado.");
         await _usuarioRepo.DeleteAsync(id);
         return OperationResult.Ok("Usuario eliminado.");
     }
+    catch (Exception) { return OperationResult.Fail("Error inesperado al eliminar el usuario."); }
+}
 
-    private static UsuarioDto ToDto(Usuario u) => new()
-    {
-        Id = u.Id, Codigo = u.Codigo, Nombre = u.Nombre,
-        Email = u.Email, Tipo = u.Tipo, Estado = u.Estado,
-        FechaRegistro = u.FechaRegistro
-    };
+private static UsuarioDto ToDto(Usuario u) => new()
+{
+    Id = u.Id,
+    Codigo = u.Codigo,
+    Nombre = u.Nombre,
+    Email = u.Email,
+    Tipo = u.Tipo,
+    Estado = u.Estado,
+    FechaRegistro = u.FechaRegistro
+};
 }

@@ -10,5 +10,14 @@ public class RecursoRepository : BaseRepository<Recurso>, IRecursoRepository
     public RecursoRepository(IMongoDatabase database) : base(database, "recursos") { }
 
     public async Task<IEnumerable<Recurso>> GetByEstadoAsync(EstadoRecurso estado)
-        => await _collection.Find(r => r.Estado == estado).ToListAsync();
+    {
+        try
+        {
+            return await _collection.Find(r => r.Estado == estado).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new RepositoryException("Error al filtrar recursos por estado.", ex);
+        }
+    }
 }
